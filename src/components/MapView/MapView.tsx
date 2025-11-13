@@ -13,6 +13,7 @@ import { Style, Stroke, Fill, Circle as CircleStyle, Text } from 'ol/style'
 import Overlay from 'ol/Overlay'
 import { fromLonLat, toLonLat } from 'ol/proj'
 import { Feature } from 'ol'
+import { Point, LineString, Polygon } from 'ol/geom'
 
 import semaphores from '../../data/semaphores.json'
 import lines from '../../data/line.json'
@@ -154,12 +155,43 @@ export const MapView = () => {
           previousFeatureRef.current = feature
         }
 
-        const coord = evt.coordinate
-        const [lon, lat] = toLonLat(coord)
-        tip.innerHTML = `Lon: ${lon.toFixed(6)}<br/>Lat: ${lat.toFixed(6)}`
-        overlay.setPosition(coord)
-        tip.style.display = 'block'
-        targetEl.style.cursor = 'pointer'
+        const clusterFeatures = feature.get('features') as Feature[] | undefined
+        let coord: number[] | undefined
+
+        if (Array.isArray(clusterFeatures) && clusterFeatures.length > 0) {
+          const geom = clusterFeatures[0].getGeometry()
+          if (geom instanceof Point) coord = geom.getCoordinates()
+        } else {
+          const geom = feature.getGeometry()
+          if (geom instanceof Point) {
+            coord = geom.getCoordinates()
+          } else if (geom instanceof LineString) {
+            const coords = geom.getCoordinates()
+            let minDist = Infinity
+            let nearest: number[] = coords[0]
+
+            for (const c of coords) {
+              const dx = c[0] - evt.coordinate[0]
+              const dy = c[1] - evt.coordinate[1]
+              const d = dx * dx + dy * dy
+              if (d < minDist) {
+                minDist = d
+                nearest = c
+              }
+            }
+            coord = nearest
+          } else if (geom instanceof Polygon) {
+            coord = geom.getInteriorPoint().getCoordinates()
+          }
+        }
+
+        if (coord) {
+          const [lon, lat] = toLonLat(coord)
+          tip.innerHTML = `Lon: ${lon.toFixed(6)}<br/>Lat: ${lat.toFixed(6)}`
+          overlay.setPosition(evt.coordinate)
+          tip.style.display = 'block'
+          targetEl.style.cursor = 'pointer'
+        }
       } else {
         tip.style.display = 'none'
         targetEl.style.cursor = ''
