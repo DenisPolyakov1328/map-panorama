@@ -1,7 +1,10 @@
 import { Box } from '@mui/material'
+import { MapView } from './components/MapView/MapView.tsx'
 
-function App() {
-  return <Box>Map</Box>
+export const App = () => {
+  return (
+    <Box>
+      <MapView />
+    </Box>
+  )
 }
-
-export default App
