@@ -14,10 +14,64 @@ import Overlay from 'ol/Overlay'
 import { fromLonLat, toLonLat } from 'ol/proj'
 import { Feature } from 'ol'
 import { Point, LineString, Polygon } from 'ol/geom'
+import type { FeatureLike } from 'ol/Feature'
 
 import semaphores from '../../data/semaphores.json'
 import lines from '../../data/line.json'
 import roadCros from '../../data/road_cros.json'
+
+const getFeatureStyle = (
+  feature: FeatureLike,
+  isHighlighted: boolean = false
+) => {
+  const features = (feature as any).get('features')
+  const size = Array.isArray(features) ? features.length : 1
+  const radius = 6 + Math.min(size, 10)
+
+  const geometry = feature.getGeometry()
+
+  if (geometry instanceof Point) {
+    return new Style({
+      image: new CircleStyle({
+        radius: radius,
+        fill: new Fill({
+          color: isHighlighted ? 'rgba(255,200,0,0.9)' : 'red'
+        }),
+        stroke: new Stroke({ color: 'white', width: 2 })
+      }),
+      text:
+        size > 1
+          ? new Text({
+              text: size.toString(),
+              fill: new Fill({ color: 'white' }),
+              font: '12px sans-serif',
+              offsetY: 1
+            })
+          : undefined
+    })
+  }
+
+  if (geometry instanceof LineString) {
+    return new Style({
+      stroke: new Stroke({
+        color: isHighlighted ? 'rgba(255,200,0,0.9)' : 'blue',
+        width: isHighlighted ? 3 : 2
+      })
+    })
+  }
+
+  if (geometry instanceof Polygon) {
+    return new Style({
+      stroke: new Stroke({
+        color: isHighlighted ? 'rgba(255,200,0,0.9)' : 'green',
+        width: isHighlighted ? 3 : 1
+      }),
+      fill: new Fill({
+        color: isHighlighted ? 'rgba(255,200,0,0.15)' : 'rgba(0,255,0,0.2)'
+      })
+    })
+  }
+}
 
 export const MapView = () => {
   const mapRef = useRef<HTMLDivElement | null>(null)
@@ -41,25 +95,7 @@ export const MapView = () => {
 
     const semaphoreLayer = new VectorLayer({
       source: clusterSource,
-      style: (feature) => {
-        const size = feature.get('features')?.length || 1
-        return new Style({
-          image: new CircleStyle({
-            radius: 6 + Math.min(size, 10),
-            fill: new Fill({ color: 'red' }),
-            stroke: new Stroke({ color: 'white', width: 2 })
-          }),
-          text:
-            size > 1
-              ? new Text({
-                  text: size.toString(),
-                  fill: new Fill({ color: 'white' }),
-                  font: '12px sans-serif',
-                  offsetY: 1
-                })
-              : undefined
-        })
-      }
+      style: (feature) => getFeatureStyle(feature, false)
     })
 
     const lineLayer = new VectorLayer({
@@ -68,9 +104,7 @@ export const MapView = () => {
           featureProjection: 'EPSG:3857'
         })
       }),
-      style: new Style({
-        stroke: new Stroke({ color: 'blue', width: 2 })
-      })
+      style: (feature) => getFeatureStyle(feature, false)
     })
 
     const polygonLayer = new VectorLayer({
@@ -79,10 +113,7 @@ export const MapView = () => {
           featureProjection: 'EPSG:3857'
         })
       }),
-      style: new Style({
-        stroke: new Stroke({ color: 'green', width: 1 }),
-        fill: new Fill({ color: 'rgba(0,255,0,0.2)' })
-      })
+      style: (feature) => getFeatureStyle(feature, false)
     })
 
     const map = new OlMap({
@@ -121,16 +152,6 @@ export const MapView = () => {
     map.addOverlay(overlay)
     overlayRef.current = overlay
 
-    const highlightStyle = new Style({
-      image: new CircleStyle({
-        radius: 10,
-        fill: new Fill({ color: 'rgba(255,200,0,0.9)' }),
-        stroke: new Stroke({ color: 'white', width: 2 })
-      }),
-      stroke: new Stroke({ color: 'rgba(255,200,0,0.9)', width: 3 }),
-      fill: new Fill({ color: 'rgba(255,200,0,0.15)' })
-    })
-
     const pointerMoveHandler = (evt: any) => {
       const pixel = map.getEventPixel(evt.originalEvent)
       const feature = map.forEachFeatureAtPixel(
@@ -151,7 +172,7 @@ export const MapView = () => {
 
       if (feature) {
         if (previousFeatureRef.current !== feature) {
-          feature.setStyle(highlightStyle)
+          feature.setStyle(getFeatureStyle(feature as FeatureLike, true))
           previousFeatureRef.current = feature
         }
 
