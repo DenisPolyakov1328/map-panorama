@@ -8,8 +8,17 @@ import type { FeatureLike } from 'ol/Feature'
 import { getFeatureStyle } from '../layers/layerStyles.ts'
 import { hideTooltip, updateTooltip } from '../components/Tooltip/Tooltip.ts'
 
-export const useFeatureHover = (map: Map | null, overlay: Overlay | null) => {
+export const useFeatureHover = (
+  map: Map | null,
+  overlay: Overlay | null,
+  selectedFeatures: Feature[] | null
+) => {
   const previousFeatureRef = useRef<Feature | null>(null)
+  const selectedFeaturesRef = useRef<Feature[] | null>(null)
+
+  useEffect(() => {
+    selectedFeaturesRef.current = selectedFeatures
+  }, [selectedFeatures])
 
   useEffect(() => {
     if (!map || !overlay) return
@@ -21,10 +30,13 @@ export const useFeatureHover = (map: Map | null, overlay: Overlay | null) => {
         (f) => f as Feature | null
       )
 
-      // Сброс подсветки предыдущего объекта
       if (
         previousFeatureRef.current &&
-        previousFeatureRef.current !== feature
+        previousFeatureRef.current !== feature &&
+        !isFeatureSelected(
+          previousFeatureRef.current,
+          selectedFeaturesRef.current
+        )
       ) {
         previousFeatureRef.current.setStyle(undefined)
         previousFeatureRef.current = null
@@ -39,21 +51,10 @@ export const useFeatureHover = (map: Map | null, overlay: Overlay | null) => {
         return
       }
 
-      // Подсветка
-      if (previousFeatureRef.current !== feature) {
-        feature.setStyle(getFeatureStyle(feature as FeatureLike, true))
-        previousFeatureRef.current = feature
-      }
-
-      // Координаты
       const clusterFeatures = feature.get('features') as Feature[] | undefined
-      let coord: number[] | undefined
-
-      if (clusterFeatures?.length) {
-        coord = getCoordFromGeometry(clusterFeatures[0], evt.coordinate)
-      } else {
-        coord = getCoordFromGeometry(feature, evt.coordinate)
-      }
+      const coord = clusterFeatures?.length
+        ? getCoordFromGeometry(clusterFeatures[0], evt.coordinate)
+        : getCoordFromGeometry(feature, evt.coordinate)
 
       if (coord) {
         const [lon, lat] = toLonLat(coord)
@@ -61,30 +62,38 @@ export const useFeatureHover = (map: Map | null, overlay: Overlay | null) => {
       }
 
       targetEl.style.cursor = 'pointer'
+
+      if (isFeatureSelected(feature, selectedFeaturesRef.current)) return
+
+      if (previousFeatureRef.current !== feature) {
+        feature.setStyle(getFeatureStyle(feature as FeatureLike, true))
+        previousFeatureRef.current = feature
+      }
     }
 
     map.on('pointermove', handler)
-
-    return () => {
-      map.un('pointermove', handler)
-    }
+    return () => map.un('pointermove', handler)
   }, [map, overlay])
 }
 
-// Вычисление координат для Point / LineString / Polygon
+const isFeatureSelected = (
+  feature: Feature,
+  selectedFeatures: Feature[] | null
+): boolean => {
+  return selectedFeatures?.includes(feature) ?? false
+}
+
 const getCoordFromGeometry = (feature: Feature, pointerCoord: number[]) => {
   const geom = feature.getGeometry()
+  if (!geom) return
 
-  if (geom instanceof Point) {
-    return geom.getCoordinates()
-  }
+  if (geom instanceof Point) return geom.getCoordinates()
 
   if (geom instanceof LineString) {
-    const coords = geom.getCoordinates()
+    let nearest = geom.getCoordinates()[0]
     let minDist = Infinity
-    let nearest = coords[0]
 
-    for (const c of coords) {
+    for (const c of geom.getCoordinates()) {
       const dx = c[0] - pointerCoord[0]
       const dy = c[1] - pointerCoord[1]
       const d = dx * dx + dy * dy
@@ -93,13 +102,8 @@ const getCoordFromGeometry = (feature: Feature, pointerCoord: number[]) => {
         nearest = c
       }
     }
-
     return nearest
   }
 
-  if (geom instanceof Polygon) {
-    return geom.getInteriorPoint().getCoordinates()
-  }
-
-  return undefined
+  if (geom instanceof Polygon) return geom.getInteriorPoint().getCoordinates()
 }

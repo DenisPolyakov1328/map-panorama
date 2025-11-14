@@ -1,27 +1,34 @@
-import { useEffect, useState } from 'react'
-import type OlMap from 'ol/Map'
+import { useEffect, useState, useRef } from 'react'
+import type Map from 'ol/Map'
 import type { Feature } from 'ol'
+import { getFeatureStyle } from '../layers/layerStyles.ts'
 
-export const useFeatureClick = (map: OlMap | null) => {
+export const useFeatureClick = (map: Map | null) => {
   const [selectedFeatures, setSelectedFeatures] = useState<Feature[] | null>(
     null
   )
+  const previousSelectedRef = useRef<Feature[] | null>(null)
 
   useEffect(() => {
     if (!map) return
 
     const clickHandler = (evt: any) => {
-      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f as Feature)
+      const feature = map.forEachFeatureAtPixel(
+        evt.pixel,
+        (f) => f as Feature | null
+      )
+
+      if (previousSelectedRef.current) {
+        previousSelectedRef.current.forEach((f) => f.setStyle(undefined))
+      }
 
       if (feature) {
-        const clusterFeatures = feature.get('features') as Feature[] | undefined
-        if (Array.isArray(clusterFeatures) && clusterFeatures.length > 0) {
-          setSelectedFeatures(clusterFeatures)
-        } else {
-          setSelectedFeatures([feature])
-        }
+        feature.setStyle(getFeatureStyle(feature, true))
+        setSelectedFeatures([feature])
+        previousSelectedRef.current = [feature]
       } else {
         setSelectedFeatures(null)
+        previousSelectedRef.current = null
       }
     }
 

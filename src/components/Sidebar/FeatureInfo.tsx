@@ -8,6 +8,18 @@ interface Props {
 export const FeatureInfo = ({ features }: Props) => {
   if (!features || features.length === 0) return null
 
+  // Функция для извлечения фич из кластера или обычной фичи
+  const getDisplayFeatures = (features: Feature[]): Feature[] => {
+    return features.flatMap((feature) => {
+      const clusterFeatures = feature.get('features') as Feature[] | undefined
+      return clusterFeatures && clusterFeatures.length > 0
+        ? clusterFeatures
+        : [feature]
+    })
+  }
+
+  const displayFeatures = getDisplayFeatures(features)
+
   return (
     <Box
       sx={{
@@ -24,7 +36,7 @@ export const FeatureInfo = ({ features }: Props) => {
       }}
     >
       <Typography variant="h6">Feature Info</Typography>
-      {features.map((feature, idx) => {
+      {displayFeatures.map((feature, idx) => {
         const { geometry, ...rest } = feature.getProperties()
         return (
           <Box key={idx} sx={{ mb: 2, borderBottom: '1px dashed #ccc', pb: 1 }}>

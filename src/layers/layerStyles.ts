@@ -8,7 +8,7 @@ export const getFeatureStyle = (
 ) => {
   const features = (feature as any).get('features')
   const size = Array.isArray(features) ? features.length : 1
-  const radius = 6 + Math.min(size, 10)
+  const radius = 8 + Math.min(size, 10)
   const geometry = feature.getGeometry()
 
   if (geometry instanceof Point) {
