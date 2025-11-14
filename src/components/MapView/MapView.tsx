@@ -11,11 +11,15 @@ import { fromLonLat } from 'ol/proj'
 import { createTooltip } from '../Tooltip/Tooltip.ts'
 import { createVectorLayer } from '../../layers/createLayer.ts'
 import { layersConfig } from '../../layers/layerConfig.ts'
+import { useFeatureClick } from '../../hooks/useFeatureClick.ts'
+import { FeatureInfo } from '../Sidebar/FeatureInfo.tsx'
 
 export const MapView = () => {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const [map, setMap] = useState<OlMap | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
+  const selectedFeature = useFeatureClick(map)
+  useFeatureHover(map, overlay)
 
   useEffect(() => {
     if (!mapRef.current) return
@@ -36,15 +40,16 @@ export const MapView = () => {
     return () => mapInstance.setTarget(undefined)
   }, [])
 
-  useFeatureHover(map, overlay)
-
   return (
-    <Box
-      ref={mapRef}
-      sx={{
-        width: '100%',
-        height: '100vh'
-      }}
-    />
+    <>
+      <Box
+        ref={mapRef}
+        sx={{
+          width: '100%',
+          height: '100vh'
+        }}
+      />
+      <FeatureInfo features={selectedFeature} />
+    </>
   )
 }
