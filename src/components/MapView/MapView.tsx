@@ -12,14 +12,14 @@ import { createTooltip } from '../Tooltip/Tooltip.ts'
 import { createVectorLayer } from '../../layers/createLayer.ts'
 import { layersConfig } from '../../layers/layerConfig.ts'
 import { useFeatureClick } from '../../hooks/useFeatureClick.ts'
-import { FeatureInfo } from '../Sidebar/FeatureInfo.tsx'
+import { Sidebar } from '../Sidebar/Sidebar.tsx'
 
 export const MapView = () => {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const [map, setMap] = useState<Map | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
 
-  const selectedFeature = useFeatureClick(map)
+  const [selectedFeature, setSelectedFeature] = useFeatureClick(map)
   useFeatureHover(map, overlay, selectedFeature)
 
   useEffect(() => {
@@ -51,7 +51,10 @@ export const MapView = () => {
           height: '100vh'
         }}
       />
-      <FeatureInfo features={selectedFeature} />
+      <Sidebar
+        features={selectedFeature}
+        onClose={() => setSelectedFeature(null)}
+      />
     </>
   )
 }

@@ -1,9 +1,17 @@
-import { useEffect, useState, useRef } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction
+} from 'react'
 import type Map from 'ol/Map'
 import type { Feature } from 'ol'
 import { getFeatureStyle } from '../layers/layerStyles.ts'
 
-export const useFeatureClick = (map: Map | null) => {
+export const useFeatureClick = (
+  map: Map | null
+): [Feature[] | null, Dispatch<SetStateAction<Feature[] | null>>] => {
   const [selectedFeatures, setSelectedFeatures] = useState<Feature[] | null>(
     null
   )
@@ -13,22 +21,24 @@ export const useFeatureClick = (map: Map | null) => {
     if (!map) return
 
     const clickHandler = (evt: any) => {
-      const feature = map.forEachFeatureAtPixel(
-        evt.pixel,
-        (f) => f as Feature | null
-      )
+      const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f as Feature)
 
       if (previousSelectedRef.current) {
         previousSelectedRef.current.forEach((f) => f.setStyle(undefined))
+        previousSelectedRef.current = null
       }
 
       if (feature) {
-        feature.setStyle(getFeatureStyle(feature, true))
-        setSelectedFeatures([feature])
-        previousSelectedRef.current = [feature]
+        const clusterFeatures = feature.get('features') as Feature[] | undefined
+        const newSelection =
+          clusterFeatures && clusterFeatures.length > 0 ? [feature] : [feature]
+
+        newSelection.forEach((f) => f.setStyle(getFeatureStyle(f, true)))
+
+        previousSelectedRef.current = newSelection
+        setSelectedFeatures(newSelection) // состояние для FeatureInfo
       } else {
         setSelectedFeatures(null)
-        previousSelectedRef.current = null
       }
     }
 
@@ -36,5 +46,13 @@ export const useFeatureClick = (map: Map | null) => {
     return () => map.un('singleclick', clickHandler)
   }, [map])
 
-  return selectedFeatures
+  // Сбрасываем стиль при внешнем обнулении
+  useEffect(() => {
+    if (selectedFeatures === null && previousSelectedRef.current) {
+      previousSelectedRef.current.forEach((f) => f.setStyle(undefined))
+      previousSelectedRef.current = null
+    }
+  }, [selectedFeatures])
+
+  return [selectedFeatures, setSelectedFeatures]
 }
