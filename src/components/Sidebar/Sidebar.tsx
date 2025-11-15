@@ -1,25 +1,22 @@
 import { Box, Slide } from '@mui/material'
 import type { Feature } from 'ol'
-import { SidebarHeader } from './SidebarHeader.tsx'
-import { FeatureCard } from './FeatureCard.tsx'
+import { SidebarHeader } from './SidebarHeader'
+import { FeatureCard } from './FeatureCard'
 
 interface SidebarProps {
   features: Feature[] | null
   onClose: () => void
 }
 
+const flattenFeatures = (features: Feature[]): Feature[] =>
+  features.flatMap((feature) => {
+    const clusterFeatures = feature.get('features') as Feature[] | undefined
+    return clusterFeatures?.length ? clusterFeatures : [feature]
+  })
+
 export const Sidebar = ({ features, onClose }: SidebarProps) => {
   const hasFeatures = !!features && features.length > 0
-
-  const getDisplayFeatures = (list: Feature[]): Feature[] =>
-    list.flatMap((feature) => {
-      const clusterFeatures = feature.get('features') as Feature[] | undefined
-      return clusterFeatures && clusterFeatures.length > 0
-        ? clusterFeatures
-        : [feature]
-    })
-
-  const displayFeatures = features ? getDisplayFeatures(features) : []
+  const displayFeatures = features ? flattenFeatures(features) : []
 
   return (
     <Slide direction="left" in={hasFeatures} mountOnEnter unmountOnExit>
@@ -39,8 +36,11 @@ export const Sidebar = ({ features, onClose }: SidebarProps) => {
         }}
       >
         <SidebarHeader onClose={onClose} />
-        {displayFeatures.map((feature, idx) => (
-          <FeatureCard key={idx} feature={feature} />
+        {displayFeatures.map((feature) => (
+          <FeatureCard
+            key={feature.getId() ?? Math.random()}
+            feature={feature}
+          />
         ))}
       </Box>
     </Slide>
