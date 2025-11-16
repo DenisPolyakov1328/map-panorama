@@ -8,11 +8,14 @@ import View from 'ol/View'
 import OSM from 'ol/source/OSM'
 import Overlay from 'ol/Overlay'
 import { fromLonLat } from 'ol/proj'
+import { defaults as defaultInteractions } from 'ol/interaction'
 import { createTooltip } from '../Tooltip/Tooltip'
 import { createVectorLayer } from '../../layers/createVectorLayer'
 import { loadLayersData } from '../../api/loadLayersData.ts'
 import { useFeatureClick } from '../../hooks/useFeatureClick'
 import { Sidebar } from '../Sidebar/Sidebar'
+import { useFeatureDoubleClick } from '../../hooks/useFeatureDoubleClick.ts'
+import { PanoramaDialog } from '../Panorama/PanoramaDialog.tsx'
 
 export const MapView = () => {
   const mapRef = useRef<HTMLDivElement | null>(null)
@@ -22,6 +25,7 @@ export const MapView = () => {
 
   const [selectedFeature, setSelectedFeature] = useFeatureClick(map)
   useFeatureHover(map, overlay, selectedFeature)
+  const [dblClickFeature, setDblClickFeature] = useFeatureDoubleClick(map)
 
   useEffect(() => {
     const loadData = async () => {
@@ -46,6 +50,9 @@ export const MapView = () => {
       view: new View({
         center: fromLonLat([38.973633, 45.029636]),
         zoom: 16
+      }),
+      interactions: defaultInteractions({
+        doubleClickZoom: false
       })
     })
 
@@ -61,6 +68,10 @@ export const MapView = () => {
       <Sidebar
         features={selectedFeature}
         onClose={() => setSelectedFeature(null)}
+      />
+      <PanoramaDialog
+        open={Boolean(dblClickFeature)}
+        onClose={() => setDblClickFeature(null)}
       />
     </>
   )
