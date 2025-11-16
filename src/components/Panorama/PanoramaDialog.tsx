@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { CloseButton } from '../ui/CloseButton.tsx'
+import { CustomIconButton } from '../ui/CustomIconButton.tsx'
+import CloseIcon from '@mui/icons-material/Close'
+import ReplayIcon from '@mui/icons-material/Replay'
+import { CustomStack } from '../ui/CustomStack.tsx'
 
 interface PanoramaDialogProps {
   open: boolean
@@ -10,6 +13,10 @@ interface PanoramaDialogProps {
 export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const frameRef = useRef<number | null>(null)
+  const sphereRef = useRef<THREE.Mesh | null>(null)
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
+  const initialRotationRef = useRef({ x: 0, y: 0 })
+  const initialFovRef = useRef(75)
 
   useEffect(() => {
     if (!open || !mountRef.current) return
@@ -21,6 +28,8 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
 
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
     camera.position.set(0, 0, 0)
+    cameraRef.current = camera
+    initialFovRef.current = camera.fov
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(width, height)
@@ -35,6 +44,12 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
         const material = new THREE.MeshBasicMaterial({ map: texture })
         const sphere = new THREE.Mesh(geometry, material)
         scene.add(sphere)
+        sphereRef.current = sphere
+
+        initialRotationRef.current = {
+          x: sphere.rotation.x,
+          y: sphere.rotation.y
+        }
 
         const animate = () => {
           renderer.render(scene, camera)
@@ -54,22 +69,25 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
       previousY = e.clientY
     }
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
+      if (!isDragging || !sphereRef.current) return
       const deltaX = e.clientX - previousX
       const deltaY = e.clientY - previousY
-      if (scene.children[0]) {
-        scene.children[0].rotation.y -= deltaX * 0.002
-        scene.children[0].rotation.x -= deltaY * 0.002
-      }
+      sphereRef.current.rotation.y -= deltaX * 0.002
+      sphereRef.current.rotation.x -= deltaY * 0.002
       previousX = e.clientX
       previousY = e.clientY
     }
     const onMouseUp = () => (isDragging = false)
 
     const onWheel = (e: WheelEvent) => {
-      camera.fov += e.deltaY * 0.02
-      camera.fov = THREE.MathUtils.clamp(camera.fov, 30, 100)
-      camera.updateProjectionMatrix()
+      if (!cameraRef.current) return
+      cameraRef.current.fov += e.deltaY * 0.02
+      cameraRef.current.fov = THREE.MathUtils.clamp(
+        cameraRef.current.fov,
+        30,
+        100
+      )
+      cameraRef.current.updateProjectionMatrix()
     }
 
     container.addEventListener('mousedown', onMouseDown)
@@ -85,33 +103,51 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
       container.removeEventListener('mousemove', onMouseMove)
       container.removeEventListener('mouseup', onMouseUp)
       container.removeEventListener('wheel', onWheel)
+      sphereRef.current = null
+      cameraRef.current = null
     }
   }, [open])
 
   if (!open) return null
 
+  const handleReset = () => {
+    if (sphereRef.current && cameraRef.current) {
+      sphereRef.current.rotation.x = initialRotationRef.current.x
+      sphereRef.current.rotation.y = initialRotationRef.current.y
+      cameraRef.current.fov = initialFovRef.current
+      cameraRef.current.updateProjectionMatrix()
+    }
+  }
+
   return (
     <div
       style={{
+        display: 'flex',
         position: 'fixed',
         top: 0,
         left: 0,
         zIndex: 1010,
         width: '100vw',
-        height: '100vh'
+        height: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(120, 120, 120, 0.4)'
       }}
     >
-      <CloseButton
-        onClick={onClose}
-        position="absolute"
-        sx={{ top: 20, right: 20 }}
-      />
+      <CustomStack
+        direction="row"
+        spacing={1}
+        sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1020 }}
+      >
+        <CustomIconButton children={<ReplayIcon />} onClick={handleReset} />
+        <CustomIconButton children={<CloseIcon />} onClick={onClose} />
+      </CustomStack>
+
       <div
         ref={mountRef}
         style={{
           width: '100%',
-          height: '100%',
-          background: 'rgba(255, 255, 255, 0.7)'
+          height: '85%'
         }}
       />
     </div>

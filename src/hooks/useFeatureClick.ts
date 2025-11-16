@@ -1,58 +1,32 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type Dispatch,
-  type SetStateAction
-} from 'react'
+import React from 'react'
+import { useEffect } from 'react'
 import type Map from 'ol/Map'
 import type { Feature } from 'ol'
 import { getFeatureStyle } from '../layers/layerStyles.ts'
 
 export const useFeatureClick = (
-  map: Map | null
-): [Feature[] | null, Dispatch<SetStateAction<Feature[] | null>>] => {
-  const [selectedFeatures, setSelectedFeatures] = useState<Feature[] | null>(
-    null
-  )
-  const previousSelectedRef = useRef<Feature[] | null>(null)
-
+  map: Map | null,
+  setSelectedFeature: (features: Feature[] | null) => void,
+  previousRef: React.RefObject<Feature[] | null>
+) => {
   useEffect(() => {
     if (!map) return
-
-    const clickHandler = (evt: any) => {
+    const handler = (evt: any) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f as Feature)
-
-      if (previousSelectedRef.current) {
-        previousSelectedRef.current.forEach((f) => f.setStyle(undefined))
-        previousSelectedRef.current = null
+      if (previousRef.current) {
+        previousRef.current.forEach((f) => f.setStyle(undefined))
+        previousRef.current = null
       }
-
       if (feature) {
-        const clusterFeatures = feature.get('features') as Feature[] | undefined
-        const newSelection =
-          clusterFeatures && clusterFeatures.length > 0 ? [feature] : [feature]
-
+        const newSelection = [feature]
         newSelection.forEach((f) => f.setStyle(getFeatureStyle(f, true)))
-
-        previousSelectedRef.current = newSelection
-        setSelectedFeatures(newSelection) // состояние для FeatureInfo
+        previousRef.current = newSelection
+        setSelectedFeature(newSelection)
       } else {
-        setSelectedFeatures(null)
+        setSelectedFeature(null)
       }
     }
-
-    map.on('singleclick', clickHandler)
-    return () => map.un('singleclick', clickHandler)
-  }, [map])
-
-  // Сбрасываем стиль при внешнем обнулении
-  useEffect(() => {
-    if (selectedFeatures === null && previousSelectedRef.current) {
-      previousSelectedRef.current.forEach((f) => f.setStyle(undefined))
-      previousSelectedRef.current = null
-    }
-  }, [selectedFeatures])
-
-  return [selectedFeatures, setSelectedFeatures]
+    map.on('singleclick', handler)
+    return () => map.un('singleclick', handler)
+  }, [map, setSelectedFeature])
 }

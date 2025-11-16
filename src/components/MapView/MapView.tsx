@@ -16,16 +16,31 @@ import { useFeatureClick } from '../../hooks/useFeatureClick'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { useFeatureDoubleClick } from '../../hooks/useFeatureDoubleClick.ts'
 import { PanoramaDialog } from '../Panorama/PanoramaDialog.tsx'
+import type { Feature } from 'ol'
 
 export const MapView = () => {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const [map, setMap] = useState<Map | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [vectorLayers, setVectorLayers] = useState<any[]>([])
+  const [selectedFeature, setSelectedFeature] = useState<Feature[] | null>(null)
+  const previousSelectedRef = useRef<Feature[] | null>(null)
+  const [isSidebarOpen, setSidebarOpen] = useState(true)
 
-  const [selectedFeature, setSelectedFeature] = useFeatureClick(map)
+  useFeatureClick(map, setSelectedFeature, previousSelectedRef)
   useFeatureHover(map, overlay, selectedFeature)
-  const [dblClickFeature, setDblClickFeature] = useFeatureDoubleClick(map)
+  const [dblClickFeature, setDblClickFeature] = useFeatureDoubleClick(
+    map,
+    setSelectedFeature,
+    previousSelectedRef
+  )
+
+  useEffect(() => {
+    if (dblClickFeature) {
+      overlay?.setPosition(undefined)
+      setSidebarOpen(false)
+    }
+  }, [dblClickFeature, overlay])
 
   useEffect(() => {
     const loadData = async () => {
@@ -65,13 +80,20 @@ export const MapView = () => {
   return (
     <>
       <Box ref={mapRef} sx={{ width: '100%', height: '100vh' }} />
-      <Sidebar
-        features={selectedFeature}
-        onClose={() => setSelectedFeature(null)}
-      />
+
+      {isSidebarOpen && (
+        <Sidebar
+          features={selectedFeature}
+          onClose={() => setSelectedFeature(null)}
+        />
+      )}
+
       <PanoramaDialog
         open={Boolean(dblClickFeature)}
-        onClose={() => setDblClickFeature(null)}
+        onClose={() => {
+          setDblClickFeature(null)
+          setSidebarOpen(true)
+        }}
       />
     </>
   )

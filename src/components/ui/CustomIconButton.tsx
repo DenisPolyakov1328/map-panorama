@@ -1,19 +1,22 @@
+import React from 'react'
 import { IconButton } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
 import type { SxProps, Theme } from '@mui/material'
 
-type Props = {
+interface CustomIconButtonProps {
   onClick: () => void
   sx?: SxProps<Theme>
-  position?: 'static' | 'absolute' | 'fixed'
+  children: React.ReactNode
 }
 
-export const CloseButton = ({ onClick, sx, position }: Props) => {
+export const CustomIconButton = ({
+  onClick,
+  sx,
+  children
+}: CustomIconButtonProps) => {
   return (
     <IconButton
       onClick={onClick}
       sx={{
-        position,
         borderRadius: 2,
         bgcolor: 'white',
         boxShadow: 2,
@@ -23,7 +26,7 @@ export const CloseButton = ({ onClick, sx, position }: Props) => {
         ...sx
       }}
     >
-      <CloseIcon />
+      {children}
     </IconButton>
   )
 }
