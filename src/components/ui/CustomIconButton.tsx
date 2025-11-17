@@ -1,32 +1,42 @@
 import React from 'react'
-import { IconButton } from '@mui/material'
+import { IconButton, Tooltip } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
 
 interface CustomIconButtonProps {
   onClick: () => void
+  tooltip?: string
+  placement?: 'top' | 'bottom' | 'left' | 'right'
   sx?: SxProps<Theme>
   children: React.ReactNode
 }
 
 export const CustomIconButton = ({
   onClick,
+  tooltip,
+  placement = 'top',
   sx,
   children
 }: CustomIconButtonProps) => {
-  return (
+  const button = (
     <IconButton
       onClick={onClick}
       sx={{
         borderRadius: 2,
         bgcolor: 'white',
         boxShadow: 2,
-        '&:hover': {
-          bgcolor: 'whitesmoke'
-        },
+        '&:hover': { bgcolor: 'whitesmoke' },
         ...sx
       }}
     >
       {children}
     </IconButton>
+  )
+
+  return tooltip ? (
+    <Tooltip title={tooltip} placement={placement}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
   )
 }

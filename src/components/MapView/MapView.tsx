@@ -15,7 +15,7 @@ import { loadLayersData } from '../../api/loadLayersData.ts'
 import { useFeatureClick } from '../../hooks/useFeatureClick'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { useFeatureDoubleClick } from '../../hooks/useFeatureDoubleClick.ts'
-import { PanoramaDialog } from '../Panorama/PanoramaDialog.tsx'
+import { PanoramaViewer } from '../Panorama/PanoramaViewer.tsx'
 import type { Feature } from 'ol'
 
 export const MapView = () => {
@@ -88,7 +88,7 @@ export const MapView = () => {
         />
       )}
 
-      <PanoramaDialog
+      <PanoramaViewer
         open={Boolean(dblClickFeature)}
         onClose={() => {
           setDblClickFeature(null)

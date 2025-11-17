@@ -1,16 +1,13 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { CustomIconButton } from '../ui/CustomIconButton.tsx'
-import CloseIcon from '@mui/icons-material/Close'
-import ReplayIcon from '@mui/icons-material/Replay'
-import { CustomStack } from '../ui/CustomStack.tsx'
+import { PanoramaControls } from './PanoramaControls.tsx'
 
-interface PanoramaDialogProps {
+interface PanoramaViewerProps {
   open: boolean
   onClose: () => void
 }
 
-export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
+export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const frameRef = useRef<number | null>(null)
   const sphereRef = useRef<THREE.Mesh | null>(null)
@@ -67,6 +64,9 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
       isDragging = true
       previousX = e.clientX
       previousY = e.clientY
+      if (mountRef.current) {
+        mountRef.current.style.cursor = 'grabbing'
+      }
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging || !sphereRef.current) return
@@ -77,9 +77,17 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
       previousX = e.clientX
       previousY = e.clientY
     }
-    const onMouseUp = () => (isDragging = false)
+    const onMouseUp = () => {
+      isDragging = false
+      if (mountRef.current) {
+        mountRef.current.style.cursor = 'grab'
+      }
+    }
+
+    const onMouseLeave = () => (isDragging = false)
 
     const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
       if (!cameraRef.current) return
       cameraRef.current.fov += e.deltaY * 0.02
       cameraRef.current.fov = THREE.MathUtils.clamp(
@@ -93,6 +101,7 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
     container.addEventListener('mousedown', onMouseDown)
     container.addEventListener('mousemove', onMouseMove)
     container.addEventListener('mouseup', onMouseUp)
+    container.addEventListener('mouseleave', onMouseLeave)
     container.addEventListener('wheel', onWheel)
 
     return () => {
@@ -102,9 +111,16 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
       container.removeEventListener('mousedown', onMouseDown)
       container.removeEventListener('mousemove', onMouseMove)
       container.removeEventListener('mouseup', onMouseUp)
+      container.removeEventListener('mouseleave', onMouseLeave)
       container.removeEventListener('wheel', onWheel)
       sphereRef.current = null
       cameraRef.current = null
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (mountRef.current) {
+      mountRef.current.style.cursor = 'grab'
     }
   }, [open])
 
@@ -117,6 +133,21 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
       cameraRef.current.fov = initialFovRef.current
       cameraRef.current.updateProjectionMatrix()
     }
+  }
+
+  const rotate = (axis: 'x' | 'y', delta: number) => {
+    if (!sphereRef.current) return
+    sphereRef.current.rotation[axis] += delta
+  }
+
+  const zoom = (deltaFov: number) => {
+    if (!cameraRef.current) return
+    cameraRef.current.fov = THREE.MathUtils.clamp(
+      cameraRef.current.fov + deltaFov,
+      30,
+      100
+    )
+    cameraRef.current.updateProjectionMatrix()
   }
 
   return (
@@ -134,15 +165,12 @@ export const PanoramaDialog = ({ open, onClose }: PanoramaDialogProps) => {
         background: 'rgba(120, 120, 120, 0.4)'
       }}
     >
-      <CustomStack
-        direction="row"
-        spacing={1}
-        sx={{ position: 'absolute', top: 20, right: 20, zIndex: 1020 }}
-      >
-        <CustomIconButton children={<ReplayIcon />} onClick={handleReset} />
-        <CustomIconButton children={<CloseIcon />} onClick={onClose} />
-      </CustomStack>
-
+      <PanoramaControls
+        onClose={onClose}
+        handleReset={handleReset}
+        rotate={rotate}
+        zoom={zoom}
+      />
       <div
         ref={mountRef}
         style={{
