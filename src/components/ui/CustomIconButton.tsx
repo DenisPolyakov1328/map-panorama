@@ -33,7 +33,7 @@ export const CustomIconButton = ({
   )
 
   return tooltip ? (
-    <Tooltip title={tooltip} placement={placement}>
+    <Tooltip title={tooltip} placement={placement} arrow>
       {button}
     </Tooltip>
   ) : (

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { PanoramaControls } from './PanoramaControls.tsx'
+import { Preloader } from '../ui/Preloader.tsx'
 
 interface PanoramaViewerProps {
   open: boolean
@@ -15,6 +16,8 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
   const initialRotationRef = useRef({ x: 0, y: 0 })
   const initialFovRef = useRef(75)
 
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
     if (!open || !mountRef.current) return
     const container = mountRef.current
@@ -28,17 +31,22 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
     cameraRef.current = camera
     initialFovRef.current = camera.fov
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(width, height)
     container.appendChild(renderer.domElement)
 
     const geometry = new THREE.SphereGeometry(500, 60, 40)
     geometry.scale(-1, 1, 1)
 
+    setLoading(true)
     const texture = new THREE.TextureLoader().load(
       '/images/panorama.jpg',
       () => {
-        const material = new THREE.MeshBasicMaterial({ map: texture })
+        const material = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 0
+        })
         const sphere = new THREE.Mesh(geometry, material)
         scene.add(sphere)
         sphereRef.current = sphere
@@ -47,6 +55,18 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
           x: sphere.rotation.x,
           y: sphere.rotation.y
         }
+
+        setLoading(false)
+
+        let opacity = 0
+        const fadeIn = () => {
+          if (!sphere.material) return
+          opacity += 0.02
+          if (opacity >= 1) opacity = 1
+          ;(sphere.material as THREE.MeshBasicMaterial).opacity = opacity
+          if (opacity < 1) requestAnimationFrame(fadeIn)
+        }
+        fadeIn()
 
         const animate = () => {
           renderer.render(scene, camera)
@@ -64,9 +84,7 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
       isDragging = true
       previousX = e.clientX
       previousY = e.clientY
-      if (mountRef.current) {
-        mountRef.current.style.cursor = 'grabbing'
-      }
+      if (mountRef.current) mountRef.current.style.cursor = 'grabbing'
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging || !sphereRef.current) return
@@ -79,13 +97,9 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
     }
     const onMouseUp = () => {
       isDragging = false
-      if (mountRef.current) {
-        mountRef.current.style.cursor = 'grab'
-      }
+      if (mountRef.current) mountRef.current.style.cursor = 'grab'
     }
-
     const onMouseLeave = () => (isDragging = false)
-
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       if (!cameraRef.current) return
@@ -119,9 +133,7 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
   }, [open])
 
   useEffect(() => {
-    if (mountRef.current) {
-      mountRef.current.style.cursor = 'grab'
-    }
+    if (mountRef.current) mountRef.current.style.cursor = 'grab'
   }, [open])
 
   if (!open) return null
@@ -165,6 +177,7 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
         background: 'rgba(120, 120, 120, 0.4)'
       }}
     >
+      {loading && <Preloader />}
       <PanoramaControls
         onClose={onClose}
         handleReset={handleReset}
@@ -175,9 +188,10 @@ export const PanoramaViewer = ({ open, onClose }: PanoramaViewerProps) => {
         ref={mountRef}
         style={{
           width: '100%',
-          height: '85%'
+          height: '85%',
+          position: 'relative'
         }}
-      />
+      ></div>
     </div>
   )
 }
